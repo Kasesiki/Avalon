@@ -21,7 +21,7 @@ avalon通过iptables和tun在传输层操作，所以使用该程序需要拥有
 - black_ips:list: 可选，类型为数组(值为String), 数组内的ip段都会被丢弃
 - mss_less: 可选，类型为u32，启用后将Maximum Segment Size强制设置为配置值，用于实现MSS 钳制以解决mtu问题，如果遇到无法正常使用等问题可以考虑将mss_less设置为1400或1300,甚至更低
 - tls_pem_path: 必选, 类型为文件路径(String), QUIC所需的X.509证书公钥
-- tls_key_path: 类型为文件路径(String), QUIC所需的X.509证书私钥
+- tls_key_path: 必选, 类型为文件路径(String), QUIC所需的X.509证书私钥
 
 -------
 
