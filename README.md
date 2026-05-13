@@ -1,69 +1,81 @@
 # Avalon
 
-Avalon 是一个用于 **内网穿透** 工具，与frp不同的是，它采用tun+反向代理+~~连接池在传输层将数据进行tcp转发~~
+avalon, 意为 阿瓦隆, 象征亚瑟王的安息之地，也是亚瑟王手中的`遥远的理想乡`
 
-version1.2.0 全新升级，由tcp多路复用改为QUIC数据传输
+目前是一个底部为QUIC协议的端口转发程序，但不同于frp的是
 
-部署连接之后自动转发全部端口，给家里云套上公网IP体验
+avalon通过iptables和tun在传输层操作，所以使用该程序需要拥有root权限和iptables软件包，这也意味着该程序仅在linux所被支持，同时意味着avalon并不会监听任何端口（除了wall端的call_port需要监听一个用于于avalon进行反向代理的端口）
 
-它由两个程序组成：
+好消息是只有wall端(外网端, 拥有公网ip暴露在外网的服务器)需要这个要求，坏消息是由于该项目为闭源项目，而且作者是懒狗不想打包windows二进制，考虑到软件本身就没人用（几乎只有作者自己）
 
-- `wall`：部署在 **公网机器** 上，负责接收入站连接
-- `avalon`：部署在 **内网机器** 上，负责把流量转发到本机服务
+[warn] 在默认情况下，wall会转发机器的**全部端口**, 所以需要在jump_ports提前jump掉wall端机器的ssh端口以免失联，当然，iptables的设置并不会将其持久化，所以如果失恋只需在云服务器的控制台或者物理机重启即可
 
----
+## 配置文件解释
 
-### 公网机器运行 `wall`
+### wall_config.json
+- jump_ports: 可选, 类型为数组(值为u16), 数组内的端口都不会转发到内网服务器而是在wall端处理
+- ban_ports: 可选，类型为数组(值为u16)，数组内的端口会被直接丢弃
+- call_port: 可选，类型为u16, 默认为39999, wall端与avalon端沟通的端口
+- debug: 可选, 类型为布尔值, 默认为false, 用处不大
+- black_ip_path: 可选, 类型为文件路径(String), 黑名单ip数据库，支持的数据库结构参照：https://github.com/borestad/blocklist-abuseipdb，黑名单ip的请求访问都会被丢弃
+- black_ips:list: 可选，类型为数组(值为String), 数组内的ip段都会被丢弃
+- mss_less: 可选，类型为u32，启用后将Maximum Segment Size强制设置为配置值，用于实现MSS 钳制以解决mtu问题，如果遇到无法正常使用等问题可以考虑将mss_less设置为1400或1300,甚至更低
+- tls_pem_path: 必选, 类型为文件路径(String), QUIC所需的X.509证书公钥
+- tls_key_path: 类型为文件路径(String), QUIC所需的X.509证书私钥
 
-这台机器需要：
+-------
 
-- 能被外部访问
-- Linux 环境
-- 安装iptables
-- 一般需要 root 权限运行
+### avalon_config.json
+- remote_addr: 必选, 类型为String, 配置为wall端服务器的地址+端口, 如"159.43.243.12:3999"
+- tls_pem_path: 必选, 类型为文件路径(String), QUIC所需的X.509证书公钥, 与服务器公钥相同
 
-### 内网机器运行 `avalon`
+## 关于QUIC密钥的简单生成
 
-这台机器需要：
+注：签名的域名/IP就是客户端连接服务端时使用的域名/IP, 如配置文件中, remote_addr设置为"159.43.243.12:3999", 则使用仅IP的签名并设置`subjectAltName=IP:159.43.243.12`下面有完整的签名示例
 
-- 能主动访问公网机器的 `call_port`
+密钥在wall端生成一次后，将公钥copy一份给avalon端即可
 
----
+指令只需要修改subjectAltName后面的参数即可
 
-## 示例配置
-
-```json
-// wall_config.json
-{
-  "jump_ports":[22],
-  "ban_ports": [],
-  "call_port":39999,
-  "debug":false,
-  "black_ip_path":"black.txt",
-  "black_ips_list":["45.186.0.0/16"]
-}
+仅域名
+```
+openssl req -x509 -newkey ed25519 -days 365 -nodes \
+  -keyout ed25519_private.pem \
+  -out ed25519_cert.pem \
+  -subj "/CN=avalon" \
+  -addext "subjectAltName=DNS:lyxnxia.space" \
+  -addext "basicConstraints=critical,CA:FALSE" \
+  -addext "keyUsage=critical,digitalSignature,keyEncipherment" \
+  -addext "extendedKeyUsage=serverAuth"
 ```
 
-配置在第一次启动时会自动生成
+该指令会在当前目录输出`ed25519_private.pem`和`ed25519_cert.pem`文件，并签名域名`lyxnxia.space`
 
-### 字段解释
-
-- `jump_ports`：该数组内的端口会被本机接管不会被穿透, 建议提前将本机ssh端口填入该数组内，如失误导致连接不上本机重启即可
-- `ban_ports`: 该数组内的端口会被iptables直接丢弃
-- `call_port`：监听端口，用于反向代理
-- `debug`：基本没什么用，默认false就好
-- `black_ip_path`：可配置的黑名单数据库，支持的数据库结构参照：https://github.com/borestad/blocklist-abuseipdb
-- `black_ips_list`: 可配置的黑名单IP段
-
----
-
-```json
-// avalon_config.json
-{
-  "remote_addr":"YOUR_WALL_IP:WALL_CALL_PORT",
-}
+仅IP
+```
+openssl req -x509 -newkey ed25519 -days 365 -nodes \
+  -keyout ed25519_private.pem \
+  -out ed25519_cert.pem \
+  -subj "/CN=avalon" \
+  -addext "subjectAltName=IP:192.168.1.100" \
+  -addext "basicConstraints=critical,CA:FALSE" \
+  -addext "keyUsage=critical,digitalSignature,keyEncipherment" \
+  -addext "extendedKeyUsage=serverAuth"
 ```
 
-remote_addr就是你的Wall程序部署机器的ip:call_port
+该指令会在当前目录输出`ed25519_private.pem`和`ed25519_cert.pem`文件，并签名IP`192.168.1.100`
 
-</details>
+混合生成
+
+```
+openssl req -x509 -newkey ed25519 -days 365 -nodes \
+  -keyout ed25519_private.pem \
+  -out ed25519_cert.pem \
+  -subj "/CN=avalon" \
+  -addext "subjectAltName=DNS:example.com,DNS:*.myserver.com,IP:192.168.1.100,IP:10.0.0.5" \
+  -addext "basicConstraints=critical,CA:FALSE" \
+  -addext "keyUsage=critical,digitalSignature,keyEncipherment" \
+  -addext "extendedKeyUsage=serverAuth"
+```
+
+该指令会在当前目录输出`ed25519_private.pem`和`ed25519_cert.pem`文件，并签名域名`example.com`和example.com的泛域名, 还有IP`192.168.1.100`与`10.0.0.5`
