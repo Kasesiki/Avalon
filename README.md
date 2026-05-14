@@ -10,7 +10,7 @@ avalon通过iptables和tun在网络层工作，所以使用该程序需要拥有
 
 坏消息是由于该项目为闭源项目，而且作者是懒狗不想打包windows二进制，考虑到软件本身就没人用（几乎只有作者自己）
 
-TOPO: 更好的底层tun库与Hardware Offload正在测试中.....
+[TODO] 更好的底层tun库与Hardware Offload正在测试中.....
 
 [warn] 在默认情况下，wall会转发机器的**全部端口**, 所以需要在jump_ports提前jump掉wall端机器的ssh端口以免失联，当然，iptables的设置并不会将其持久化，所以如果失恋只需在云服务器的控制台或者物理机重启即可
 
