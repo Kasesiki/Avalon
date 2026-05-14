@@ -14,6 +14,8 @@ TOPO: 更好的底层tun库与Hardware Offload正在测试中.....
 
 [warn] 在默认情况下，wall会转发机器的**全部端口**, 所以需要在jump_ports提前jump掉wall端机器的ssh端口以免失联，当然，iptables的设置并不会将其持久化，所以如果失恋只需在云服务器的控制台或者物理机重启即可
 
+顺带一提，作者没有足够好的配置或者足够多的设备测试带宽上线，对实际使用时的带宽作用不做保证，但在v1.5.0之后完成了正式的测试和持久性验证能够确保可以作为24*7的稳定应用运行
+
 ## 配置文件解释
 
 ### wall_config.json
@@ -23,7 +25,7 @@ TOPO: 更好的底层tun库与Hardware Offload正在测试中.....
 - debug: 可选, 类型为布尔值, 默认为false, 用处不大
 - black_ip_path: 可选, 类型为文件路径(String), 黑名单ip数据库，支持的数据库结构参照：https://github.com/borestad/blocklist-abuseipdb，黑名单ip的请求访问都会被丢弃
 - black_ips:list: 可选，类型为数组(值为String), 数组内的ip段都会被丢弃
-- mss_less: 可选，类型为u32，启用后将Maximum Segment Size强制设置为配置值，用于实现MSS 钳制以解决mtu问题，如果遇到无法正常使用等问题可以考虑将mss_less设置为1400或1300,甚至更低
+- **mss_less**: 可选，类型为u32，启用后将Maximum Segment Size强制设置为配置值，用于实现MSS 钳制以解决mtu问题，如果遇到无法正常使用等问题可以考虑将mss_less设置为1360及以下
 - tls_pem_path: 必选, 类型为文件路径(String), QUIC所需的X.509证书公钥
 - tls_key_path: 必选, 类型为文件路径(String), QUIC所需的X.509证书私钥
 
