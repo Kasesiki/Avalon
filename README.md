@@ -49,28 +49,36 @@ avalon通过iptables和tun在网络层工作，所以使用该程序需要拥有
 
 仅域名
 ```
-openssl req -x509 -newkey ed25519 -days 365 -nodes \
-  -keyout ed25519_private.pem \
+openssl genpkey -algorithm ed25519 -out ed25519_private.pem
+openssl x509 -req -days 365 \
+  -in <(openssl req -new -key ed25519_private.pem -subj "/CN=avalon") \
+  -signkey ed25519_private.pem \
   -out ed25519_cert.pem \
-  -subj "/CN=avalon" \
-  -addext "subjectAltName=DNS:lyxnxia.space" \
-  -addext "basicConstraints=critical,CA:FALSE" \
-  -addext "keyUsage=critical,digitalSignature,keyEncipherment" \
-  -addext "extendedKeyUsage=serverAuth"
+  -extfile <(cat << 'EOF'
+subjectAltName = DNS:lyxnxia.space
+basicConstraints = critical,CA:FALSE
+keyUsage = digitalSignature
+extendedKeyUsage = serverAuth
+EOF
+)
 ```
 
 该指令会在当前目录输出`ed25519_private.pem`和`ed25519_cert.pem`文件，并签名域名`lyxnxia.space`
 
 仅IP
 ```
-openssl req -x509 -newkey ed25519 -days 365 -nodes \
-  -keyout ed25519_private.pem \
+openssl genpkey -algorithm ed25519 -out ed25519_private.pem
+openssl x509 -req -days 365 \
+  -in <(openssl req -new -key ed25519_private.pem -subj "/CN=avalon") \
+  -signkey ed25519_private.pem \
   -out ed25519_cert.pem \
-  -subj "/CN=avalon" \
-  -addext "subjectAltName=IP:192.168.1.100" \
-  -addext "basicConstraints=critical,CA:FALSE" \
-  -addext "keyUsage=critical,digitalSignature,keyEncipherment" \
-  -addext "extendedKeyUsage=serverAuth"
+  -extfile <(cat << 'EOF'
+subjectAltName = IP:192.168.1.100
+basicConstraints = critical,CA:FALSE
+keyUsage = digitalSignature
+extendedKeyUsage = serverAuth
+EOF
+)
 ```
 
 该指令会在当前目录输出`ed25519_private.pem`和`ed25519_cert.pem`文件，并签名IP`192.168.1.100`
@@ -78,14 +86,18 @@ openssl req -x509 -newkey ed25519 -days 365 -nodes \
 混合生成
 
 ```
-openssl req -x509 -newkey ed25519 -days 365 -nodes \
-  -keyout ed25519_private.pem \
+openssl genpkey -algorithm ed25519 -out ed25519_private.pem
+openssl x509 -req -days 365 \
+  -in <(openssl req -new -key ed25519_private.pem -subj "/CN=avalon") \
+  -signkey ed25519_private.pem \
   -out ed25519_cert.pem \
-  -subj "/CN=avalon" \
-  -addext "subjectAltName=DNS:example.com,DNS:*.myserver.com,IP:192.168.1.100,IP:10.0.0.5" \
-  -addext "basicConstraints=critical,CA:FALSE" \
-  -addext "keyUsage=critical,digitalSignature,keyEncipherment" \
-  -addext "extendedKeyUsage=serverAuth"
+  -extfile <(cat << 'EOF'
+subjectAltName = DNS:example.com,DNS:*.myserver.com,IP:192.168.1.100,IP:10.0.0.5
+basicConstraints = critical,CA:FALSE
+keyUsage = digitalSignature
+extendedKeyUsage = serverAuth
+EOF
+)
 ```
 
 该指令会在当前目录输出`ed25519_private.pem`和`ed25519_cert.pem`文件，并签名域名`example.com`和example.com的泛域名, 还有IP`192.168.1.100`与`10.0.0.5`
