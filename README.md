@@ -10,11 +10,11 @@ avalon通过iptables和tun在网络层工作，所以使用该程序需要拥有
 
 坏消息是由于该项目为闭源项目，而且作者是懒狗不想打包windows二进制，考虑到软件本身就没人用（几乎只有作者自己）
 
-[TODO] 更好的底层tun库与Hardware Offload正在测试中.....
-
 [warn] 在默认情况下，wall会转发机器的**全部端口**, 所以需要在jump_ports提前jump掉wall端机器的ssh端口以免失联，当然，iptables的设置并不会将其持久化，所以如果失联只需在云服务器的控制台或者物理机重启即可
 
 [warn] 目前软件会处理所有ICMP及TCP包，但是不会处理UDP包（等待支持中）
+
+[info] v1.7.0版本主要更新内容为提供了xdp转发的分支来提高性能，同时增加了一种用于提高性能和去除依赖黑名单算法，实现iptables由必选转为可选, 目前v1.7.0还在测试中
 
 ## 配置文件解释
 
@@ -27,11 +27,9 @@ v1.6.0版本的配置文件名称统一为config.json, 此前版本wall端为wal
 - debug: 可选, 类型为布尔值, 默认为false, 用处不大
 - black_ip_path: 可选, 类型为文件路径(String), 黑名单ip数据库，支持的数据库结构参照：https://github.com/borestad/blocklist-abuseipdb，黑名单ip的请求访问都会被丢弃
 - black_ips:list: 可选，类型为数组(值为String), 数组内的ip段都会被丢弃
-- **mss_less**: 可选，类型为u32，启用后将Maximum Segment Size强制设置为配置值，用于实现MSS 钳制以解决mtu问题
+- **mss_less**: 可选，类型为u32，启用后将Maximum Segment Size强制设置为配置值，用于实现MSS钳制以解决pmtu问题
 - tls_pem_path: 必选, 类型为文件路径(String), QUIC所需的X.509证书公钥
 - tls_key_path: 必选, 类型为文件路径(String), QUIC所需的X.509证书私钥
-
-如果遇到奇怪的数据丢失问题，连接成功却无法正常通信的问题，尝试将mss_less依次尝试设置为: 1460 -> 1400 -> 1360
 
 -------
 
@@ -48,6 +46,10 @@ wall side:
 avalon side:
 {"tls_pem_path": "ed25519_cert.pem", "remote_addr": "your remote address"}
 ```
+
+## 关于mss_less
+
+由于配置值为mss而非mtu, 假设主机出入口网卡mtu为1400, 则配置值应当改为1360, 默认情况下, mss_less配置值为1460
 
 ## 关于QUIC密钥的简单生成
 
